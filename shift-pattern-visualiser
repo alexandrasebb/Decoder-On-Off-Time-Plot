@@ -1,0 +1,73 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import matplotlib.dates as mdates
+from datetime import datetime, timedelta
+
+# Function to convert time strings to datetime
+def time_str_to_datetime(time_str, date_format='%I:%M:%S %p'):
+    return datetime.strptime(time_str, date_format)
+
+# Data: decoder on/off times
+decoder_times = {
+    1: [('06:30:00 AM', '11:00:00 PM')],
+    2: [('07:00:00 PM', '10:30:00 PM')],
+    3: [('07:00:00 PM', '10:30:00 PM')],
+    4: [],
+    5: [('07:00:00 AM', '02:00:00 PM')],
+    6: [('07:00:00 AM', '02:00:00 PM')],
+    7: [('05:30:00 PM', '09:30:00 PM')],
+    8: [('10:30:00 AM', '02:30:00 PM'), ('04:00:00 PM', '08:00:00 PM'), ('09:30:00 PM', '11:15:00 PM')],
+    9: [('03:30:00 PM', '08:40:00 PM')],
+    10: [('10:00:00 AM', '03:15:00 PM'), ('05:00:00 PM', '09:30:00 PM')],
+    11: [('05:00:00 PM', '09:50:00 PM')],
+    12: [('10:00:00 AM', '03:50:00 PM')]
+}
+
+# Create a DataFrame to hold the plot data
+plot_data = []
+
+# Define the date format
+time_format = '%I:%M:%S %p'
+
+# Define start of the day
+start_of_day = datetime.strptime('12:00:00 AM', time_format)
+
+for decoder, times in decoder_times.items():
+    for start_time_str, end_time_str in times:
+        start_time = time_str_to_datetime(start_time_str, time_format)
+        end_time = time_str_to_datetime(end_time_str, time_format)
+        
+        # Ensure end time is on the next day if it is earlier than start time
+        if end_time < start_time:
+            end_time += timedelta(days=1)
+        
+        plot_data.append((decoder, start_of_day + timedelta(hours=start_time.hour, minutes=start_time.minute),
+                          start_of_day + timedelta(hours=end_time.hour, minutes=end_time.minute)))
+
+# Convert to DataFrame
+df = pd.DataFrame(plot_data, columns=['Decoder', 'Start Time', 'End Time'])
+
+# Plot
+fig, ax = plt.subplots(figsize=(12, 8))
+
+# Create a horizontal bar for each on/off interval
+for decoder in df['Decoder'].unique():
+    decoder_data = df[df['Decoder'] == decoder]
+    for _, row in decoder_data.iterrows():
+        ax.plot([row['Start Time'], row['End Time']], [decoder, decoder], marker='o', markersize=3, color='C'+str(decoder % 10))
+
+# Formatting
+ax.set_yticks(df['Decoder'].unique())
+ax.set_yticklabels([f'Decoder {d}' for d in df['Decoder'].unique()])
+ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+ax.set_xlabel('Time')
+ax.set_ylabel('Decoders')
+ax.set_title('On/Off States of Decoders Over 24 Hours')
+
+# Remove the legend
+# ax.legend().set_visible(False)
+
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
